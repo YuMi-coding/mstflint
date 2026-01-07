@@ -895,11 +895,11 @@ vector<AmberField> MlxlinkAmBerCollector::getLinkStatus()
             fields.push_back(
               AmberField("successful_recovery_events", to_string(getFieldValue("successful_recovery_events"))));
 
-            resetLocalParser(ACCESS_REG_PPCNT);
-            updateField("local_port", _localPort);
-            updateField("grp", PPCNT_PHY_GROUP);
-            updateField("lp_gl", (u_int32_t)(_localPort == 255));
-            sendRegister(ACCESS_REG_PPCNT, MACCESS_REG_METHOD_GET);
+            // resetLocalParser(ACCESS_REG_PPCNT);
+            // updateField("local_port", _localPort);
+            // updateField("grp", PPCNT_PHY_GROUP);
+            // updateField("lp_gl", (u_int32_t)(_localPort == 255));
+            // sendRegister(ACCESS_REG_PPCNT, MACCESS_REG_METHOD_GET);
             // --- Physical Layer Counters (grp=0x12): RS-FEC / symbol-domain counters ---
             auto u64_from_hi_lo = [&](const char* hi, const char* lo) -> u_int64_t {
                 return add32BitTo64(getFieldValue(hi), getFieldValue(lo));

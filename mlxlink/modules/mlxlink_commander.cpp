@@ -2550,32 +2550,25 @@ void MlxlinkCommander::prepareBerInfo()
     // }
 
     if (_protoActive == ETH)
-    {    
+    {
         u_int32_t linkDown = 0;
         u_int32_t linkRecovery = 0;
-        // setPrintVal(_berInfoCmd, "Link Down Counter",
-        //             AmberField::getValueFromFields(_ppcntFields, "Link_Down"), ANSI_COLOR_RESET, true, _linkUP);
 
-        // setPrintVal(_berInfoCmd, "Link Error Recovery Counter",
-        //             AmberField::getValueFromFields(_ppcntFields, "successful_recovery_events"), ANSI_COLOR_RESET, true,
-        //             _linkUP);
-        try {
+        try
+        {
             sendPrmReg(ACCESS_REG_PPCNT, GET, "grp=%d", PPCNT_PHY_GROUP);
-
-            u_int32_t linkDown = getFieldValue("link_down_events");
-            u_int32_t linkRecovery = getFieldValue("successful_recovery_events");
-
+            linkDown = getFieldValue("link_down_events");
+            linkRecovery = getFieldValue("successful_recovery_events");
             setPrintVal(_berInfoCmd, "Link Down Counter", to_string(linkDown),
                         ANSI_COLOR_RESET, true, _linkUP);
             setPrintVal(_berInfoCmd, "Link Error Recovery Counter", to_string(linkRecovery),
                         ANSI_COLOR_RESET, true, _linkUP);
-        } catch (const std::exception& exc)
+        }
+        catch (const std::exception& exc)
         {
             throw MlxRegException("Problem getting ETH link down and recovery issue: %s", exc.what());
         }
 
-        // setPrintVal(_berInfoCmd, "Link Down Counter", to_string(linkDown), ANSI_COLOR_RESET, true, _linkUP);
-        // setPrintVal(_berInfoCmd, "Link Error Recovery Counter", to_string(linkRecovery), ANSI_COLOR_RESET, true, _linkUP);
     }
 
     if (_productTechnology >= PRODUCT_7NM && !dm_is_gpu((dm_dev_id_t)_devID))

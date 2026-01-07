@@ -1448,6 +1448,25 @@ int readSignedByte(u_int32_t value)
     return readSigned(value, 8);
 }
 
+// void setPrintVal(MlxlinkCmdPrint& mlxlinkCmdPrint,
+//                  string key,
+//                  string value,
+//                  string color,
+//                  bool print,
+//                  bool valid,
+//                  bool arrayValue,
+//                  bool colorKey)
+// {
+//     mlxlinkCmdPrint.mlxlinkRecords[mlxlinkCmdPrint.lastInsertedRow].key = key;
+//     mlxlinkCmdPrint.mlxlinkRecords[mlxlinkCmdPrint.lastInsertedRow].val = valid ? value : "N/A";
+//     mlxlinkCmdPrint.mlxlinkRecords[mlxlinkCmdPrint.lastInsertedRow].color = color;
+//     mlxlinkCmdPrint.mlxlinkRecords[mlxlinkCmdPrint.lastInsertedRow].visible = print;
+//     mlxlinkCmdPrint.mlxlinkRecords[mlxlinkCmdPrint.lastInsertedRow].arrayValue = arrayValue;
+//     mlxlinkCmdPrint.mlxlinkRecords[mlxlinkCmdPrint.lastInsertedRow].colorKey = colorKey;
+//     mlxlinkCmdPrint.mlxlinkRecords[mlxlinkCmdPrint.lastInsertedRow].lineLen = mlxlinkCmdPrint.lineLen;
+//     mlxlinkCmdPrint.lastInsertedRow++;
+// }
+
 void setPrintVal(MlxlinkCmdPrint& mlxlinkCmdPrint,
                  string key,
                  string value,
@@ -1457,13 +1476,23 @@ void setPrintVal(MlxlinkCmdPrint& mlxlinkCmdPrint,
                  bool arrayValue,
                  bool colorKey)
 {
-    mlxlinkCmdPrint.mlxlinkRecords[mlxlinkCmdPrint.lastInsertedRow].key = key;
-    mlxlinkCmdPrint.mlxlinkRecords[mlxlinkCmdPrint.lastInsertedRow].val = valid ? value : "N/A";
-    mlxlinkCmdPrint.mlxlinkRecords[mlxlinkCmdPrint.lastInsertedRow].color = color;
-    mlxlinkCmdPrint.mlxlinkRecords[mlxlinkCmdPrint.lastInsertedRow].visible = print;
-    mlxlinkCmdPrint.mlxlinkRecords[mlxlinkCmdPrint.lastInsertedRow].arrayValue = arrayValue;
-    mlxlinkCmdPrint.mlxlinkRecords[mlxlinkCmdPrint.lastInsertedRow].colorKey = colorKey;
-    mlxlinkCmdPrint.mlxlinkRecords[mlxlinkCmdPrint.lastInsertedRow].lineLen = mlxlinkCmdPrint.lineLen;
+    const size_t row = static_cast<size_t>(mlxlinkCmdPrint.lastInsertedRow);
+
+    // Ensure the vector has an element at index [row].
+    // When lastInsertedRow == size(), this grows by 1 and makes operator[] safe.
+    if (mlxlinkCmdPrint.mlxlinkRecords.size() <= row) {
+        mlxlinkCmdPrint.mlxlinkRecords.resize(row + 1);
+    }
+
+    auto& rec = mlxlinkCmdPrint.mlxlinkRecords[row];
+    rec.key        = std::move(key);
+    rec.val        = valid ? std::move(value) : string("N/A");
+    rec.color      = std::move(color);
+    rec.visible    = print;
+    rec.arrayValue = arrayValue;
+    rec.colorKey   = colorKey;
+    rec.lineLen    = mlxlinkCmdPrint.lineLen;
+
     mlxlinkCmdPrint.lastInsertedRow++;
 }
 
