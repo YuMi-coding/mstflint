@@ -2489,12 +2489,20 @@ void MlxlinkCommander::prepareBerInfo()
     setPrintVal(_berInfoCmd, "Time Since Last Clear [Min]",
                 AmberField::getValueFromFields(_ppcntFields, "Time_since_last_clear_[Min]"), ANSI_COLOR_RESET, true,
                 _linkUP);
+    setPrintVal(_berInfoCmd, "PHY Received Bits",
+            AmberField::getValueFromFields(_ppcntFields, "Phy_Received_Bits"), ANSI_COLOR_RESET, true, _linkUP);
+    setPrintVal(_berInfoCmd, "PHY Corrected Bits",
+                AmberField::getValueFromFields(_ppcntFields, "Phy_Corrected_Bits"), ANSI_COLOR_RESET, true, _linkUP);
+
     if (_protoActive == IB)
     {
         setPrintVal(_berInfoCmd, "Symbol Errors", AmberField::getValueFromFields(_ppcntFields, "Symbol_Errors"),
                     ANSI_COLOR_RESET, true, _linkUP);
         setPrintVal(_berInfoCmd, "Symbol BER", AmberField::getValueFromFields(_ppcntFields, "Symbol_BER"),
                     ANSI_COLOR_RESET, true, _linkUP);
+        setPrintVal(_berInfoCmd, "Unknown Symbol Errors (PPCNT)",
+            AmberField::getValueFromFields(_ppcntFields, "Unknown_Symbol_Errors"), ANSI_COLOR_RESET, true, _linkUP);
+
     }
     setPrintVal(_berInfoCmd, "Effective Physical Errors",
                 AmberField::getValueFromFields(_ppcntFields, "Effective_Errors", true), ANSI_COLOR_RESET, true,
@@ -2507,21 +2515,53 @@ void MlxlinkCommander::prepareBerInfo()
     phyRawErr = getValuesOfActiveLanes(phyRawErr);
 
     setPrintVal(_berInfoCmd, "Raw Physical Errors Per Lane", phyRawErr, ANSI_COLOR_RESET, true, _linkUP, true);
+    setPrintVal(_berInfoCmd, "RS-FEC Corrected Symbols (Total)",
+                AmberField::getValueFromFields(_ppcntFields, "RS_FEC_Corrected_Symbols_Total"), ANSI_COLOR_RESET, true,
+                _linkUP);
+
+    setPrintVal(_berInfoCmd, "RS-FEC Corrected Blocks",
+                AmberField::getValueFromFields(_ppcntFields, "RS_FEC_Corrected_Blocks"), ANSI_COLOR_RESET, true, _linkUP);
+
+    setPrintVal(_berInfoCmd, "RS-FEC Uncorrectable Blocks",
+                AmberField::getValueFromFields(_ppcntFields, "RS_FEC_Uncorrectable_Blocks"), ANSI_COLOR_RESET, true,
+                _linkUP);
+
+    setPrintVal(_berInfoCmd, "RS-FEC No-Error Blocks",
+                AmberField::getValueFromFields(_ppcntFields, "RS_FEC_No_Error_Blocks"), ANSI_COLOR_RESET, true, _linkUP);
+
+    // Optional: per-lane RS-FEC corrected symbols: Only do this if you’re sure you pushed the lane fields in getLinkStatus().
+    string rsLane = AmberField::getValueFromFields(_ppcntFields, "RS_FEC_Corrected_Symbols_lane", false);
+    if (!rsLane.empty())
+    {
+        findAndReplace(rsLane, "_", ",");
+        rsLane = getValuesOfActiveLanes(rsLane);
+        setPrintVal(_berInfoCmd, "RS-FEC Corrected Symbols Per Lane", rsLane, ANSI_COLOR_RESET, true, _linkUP, true);
+    }
+
+    // if (_protoActive == ETH)
+    // {
+    //     sendPrmReg(ACCESS_REG_PPCNT, GET, "grp=%d", PPCNT_PHY_GROUP);
+
+    //     u_int32_t linkDownCounter = getFieldValue("link_down_events");
+    //     u_int32_t linkRecoveryCounter = getFieldValue("successful_recovery_events");
+    //     setPrintVal(_berInfoCmd, "Link Down Counter", to_string(linkDownCounter), ANSI_COLOR_RESET, true, _linkUP);
+    //     setPrintVal(_berInfoCmd, "Link Error Recovery Counter", to_string(linkRecoveryCounter), ANSI_COLOR_RESET, true,
+    //                 _linkUP);
+    // }
 
     if (_protoActive == ETH)
     {
-        sendPrmReg(ACCESS_REG_PPCNT, GET, "grp=%d", PPCNT_PHY_GROUP);
+        setPrintVal(_berInfoCmd, "Link Down Counter",
+                    AmberField::getValueFromFields(_ppcntFields, "Link_Down"), ANSI_COLOR_RESET, true, _linkUP);
 
-        u_int32_t linkDownCounter = getFieldValue("link_down_events");
-        u_int32_t linkRecoveryCounter = getFieldValue("successful_recovery_events");
-        setPrintVal(_berInfoCmd, "Link Down Counter", to_string(linkDownCounter), ANSI_COLOR_RESET, true, _linkUP);
-        setPrintVal(_berInfoCmd, "Link Error Recovery Counter", to_string(linkRecoveryCounter), ANSI_COLOR_RESET, true,
+        setPrintVal(_berInfoCmd, "Link Error Recovery Counter",
+                    AmberField::getValueFromFields(_ppcntFields, "successful_recovery_events"), ANSI_COLOR_RESET, true,
                     _linkUP);
     }
 
     if (_productTechnology >= PRODUCT_7NM && !dm_is_gpu((dm_dev_id_t)_devID))
     {
-        sendPrmReg(ACCESS_REG_PPCNT, GET, "grp=%d", PPCNT_STATISTICAL_GROUP);
+        // sendPrmReg(ACCESS_REG_PPCNT, GET, "grp=%d", PPCNT_STATISTICAL_GROUP);
         string rawBer = AmberField::getValueFromFields(_ppcntFields, "Raw_BER_lane", false);
         findAndReplace(rawBer, "_", ",");
         rawBer = getValuesOfActiveLanes(rawBer);
