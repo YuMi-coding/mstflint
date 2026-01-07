@@ -897,6 +897,53 @@ vector<AmberField> MlxlinkAmBerCollector::getLinkStatus()
 
             resetLocalParser(ACCESS_REG_PPCNT);
             updateField("local_port", _localPort);
+            updateField("grp", PPCNT_PHY_GROUP);
+            updateField("lp_gl", (u_int32_t)(_localPort == 255));
+            sendRegister(ACCESS_REG_PPCNT, MACCESS_REG_METHOD_GET);
+            // --- Physical Layer Counters (grp=0x12): RS-FEC / symbol-domain counters ---
+            auto u64_from_hi_lo = [&](const char* hi, const char* lo) -> u_int64_t {
+                return add32BitTo64(getFieldValue(hi), getFieldValue(lo));
+            };
+
+            // RS-FEC blocks (total blocks = corrected + uncorrectable + no_errors)
+            u_int64_t rs_corr_blocks  = u64_from_hi_lo("rs_fec_corrected_blocks_high", "rs_fec_corrected_blocks_low");
+            u_int64_t rs_uncorr_blocks = u64_from_hi_lo("rs_fec_uncorrectable_blocks_high", "rs_fec_uncorrectable_blocks_low");
+            u_int64_t rs_noerr_blocks = u64_from_hi_lo("rs_fec_no_errors_blocks_high", "rs_fec_no_errors_blocks_low");
+
+            fields.push_back(AmberField("RS_FEC_Corrected_Blocks", to_string(rs_corr_blocks)));
+            fields.push_back(AmberField("RS_FEC_Uncorrectable_Blocks", to_string(rs_uncorr_blocks)));
+            fields.push_back(AmberField("RS_FEC_No_Error_Blocks", to_string(rs_noerr_blocks)));
+
+            u_int64_t rs_corr_sym_total =
+            u64_from_hi_lo("rs_fec_corrected_symbols_total_high", "rs_fec_corrected_symbols_total_low");
+            fields.push_back(AmberField("RS_FEC_Corrected_Symbols_Total", to_string(rs_corr_sym_total)));
+
+            // Per-lane corrected symbols: also build a packed "RS_FEC_Corrected_Symbols_lane" field for printing like Raw_Errors_lane
+            string packed = "";
+            for (u_int32_t lane = 0; lane < _numOfLanes; lane++)
+            {
+                string v = "N/A";
+                if (lane < _numOfLanes)
+                {
+                    string hi = "rs_fec_corrected_symbols_lane" + to_string(lane) + "_high";
+                    string lo = "rs_fec_corrected_symbols_lane" + to_string(lane) + "_low";
+                    u_int64_t x = add32BitTo64(getFieldValue(hi), getFieldValue(lo));
+                    v = to_string(x);
+                }
+                packed += v;
+                if (lane != _numOfLanes - 1) packed += "_";
+            }
+            fields.push_back(AmberField("RS_FEC_Corrected_Symbols_lane", packed));
+
+            // Optional: "UnknownSymbol" counter (IB-ish symbol_errors)
+            if(_isPortIB){
+                u_int64_t unknown_symbol =
+                u64_from_hi_lo("symbol_errors_high", "symbol_errors_low");
+                fields.push_back(AmberField("Unknown_Symbol_Errors", to_string(unknown_symbol)));
+            }
+
+            resetLocalParser(ACCESS_REG_PPCNT);
+            updateField("local_port", _localPort);
             updateField("grp", PPCNT_STATISTICAL_GROUP);
             updateField("lp_gl", (u_int32_t)(_localPort == 255));
             sendRegister(ACCESS_REG_PPCNT, MACCESS_REG_METHOD_GET);
@@ -1018,6 +1065,15 @@ vector<AmberField> MlxlinkAmBerCollector::getLinkStatus()
             fields.push_back(AmberField("Time_since_last_clear_[Min]", string(timeFrmt)));
 
             getPpcntBer(NETWORK_PORT_TYPE, fields);
+
+            // --- Physical Layer Statistical Counters (grp=0x16): true denominators for pre-FEC metrics ---
+            u_int64_t rx_bits =
+            add32BitTo64(getFieldValue("phy_received_bits_high"), getFieldValue("phy_received_bits_low"));
+            fields.push_back(AmberField("Phy_Received_Bits", to_string(rx_bits)));
+
+            u_int64_t corr_bits =
+            add32BitTo64(getFieldValue("phy_corrected_bits_high"), getFieldValue("phy_corrected_bits_low"));
+            fields.push_back(AmberField("Phy_Corrected_Bits", to_string(corr_bits)));
 
             u_int32_t numOfBins = 0;
 
