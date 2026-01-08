@@ -1057,12 +1057,14 @@ vector<AmberField> MlxlinkAmBerCollector::getLinkStatus()
             updateField("grp", PPCNT_STATISTICAL_GROUP);
             updateField("lp_gl", (u_int32_t)(_localPort == 255));
             sendRegister(ACCESS_REG_PPCNT, MACCESS_REG_METHOD_GET);
-            float lastClear = (float)add32BitTo64(getFieldValue("time_since_last_clear_high"),
-                                                  getFieldValue("time_since_last_clear_low")) /
+            u_int64_t lastClearMS = add32BitTo64(getFieldValue("time_since_last_clear_high"),
+                                                  getFieldValue("time_since_last_clear_low"));
+            float lastClear = (float) lastClearMS/
                               60000.0;
             char timeFrmt[64];
             sprintf(timeFrmt, "%.1f", lastClear);
             fields.push_back(AmberField("Time_since_last_clear_[Min]", string(timeFrmt)));
+            fields.push_back(AmberField("Time_since_last_clear_[ms]", to_string(lastClearMS)));
 
             getPpcntBer(NETWORK_PORT_TYPE, fields);
 

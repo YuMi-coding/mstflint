@@ -2489,6 +2489,9 @@ void MlxlinkCommander::prepareBerInfo()
     setPrintVal(_berInfoCmd, "Time Since Last Clear [Min]",
                 AmberField::getValueFromFields(_ppcntFields, "Time_since_last_clear_[Min]"), ANSI_COLOR_RESET, true,
                 _linkUP);
+    setPrintVal(_berInfoCmd, "Time Since Last Clear [ms]",
+                AmberField::getValueFromFields(_ppcntFields, "Time_since_last_clear_[ms]"), ANSI_COLOR_RESET, true,
+                _linkUP);
     setPrintVal(_berInfoCmd, "PHY Received Bits",
             AmberField::getValueFromFields(_ppcntFields, "Phy_Received_Bits"), ANSI_COLOR_RESET, true, _linkUP);
     setPrintVal(_berInfoCmd, "PHY Corrected Bits",

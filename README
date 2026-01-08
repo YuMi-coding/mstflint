@@ -56,14 +56,13 @@ MSTFLINT Package - Firmware Burning and Diagnostics Tools
     a) Build the mstflint utility. This package is built using a standard
        autotools method.
 
-	   NOTE: if you are trying to build from the GitHub repository, need to run ./autogen.sh first.
+	   NOTE: if you are trying to build from the GitHub repository **for our testing scenario **, need to run ./autogen.sh first.
 
        Example:
        > ./autogen.sh
-       > mkdir build
-       > cd build
-       > ../configure
-       > make
+       > autoupdate
+       > ./configure --enable-adb-generic-tools --prefix=/home/cumulus/mstflint-ser-install --disable-inband
+       > make -j12
        > make install
 
        - Run "configure --help" for custom configuration options.
