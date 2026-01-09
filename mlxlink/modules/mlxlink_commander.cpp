@@ -2497,19 +2497,19 @@ void MlxlinkCommander::prepareBerInfo()
     setPrintVal(_berInfoCmd, "PHY Corrected Bits",
                 AmberField::getValueFromFields(_ppcntFields, "Phy_Corrected_Bits"), ANSI_COLOR_RESET, true, _linkUP);
 
+    setPrintVal(_berInfoCmd, "Symbol Errors", AmberField::getValueFromFields(_ppcntFields, "Symbol_Errors"),
+                ANSI_COLOR_RESET, true, _linkUP);
+    setPrintVal(_berInfoCmd, "Effective Physical Errors",
+                AmberField::getValueFromFields(_ppcntFields, "Effective_Errors", true), ANSI_COLOR_RESET, true,
+                _linkUP);
     if (_protoActive == IB)
     {
-        setPrintVal(_berInfoCmd, "Symbol Errors", AmberField::getValueFromFields(_ppcntFields, "Symbol_Errors"),
-                    ANSI_COLOR_RESET, true, _linkUP);
         setPrintVal(_berInfoCmd, "Symbol BER", AmberField::getValueFromFields(_ppcntFields, "Symbol_BER"),
                     ANSI_COLOR_RESET, true, _linkUP);
         setPrintVal(_berInfoCmd, "Unknown Symbol Errors (PPCNT)",
             AmberField::getValueFromFields(_ppcntFields, "Unknown_Symbol_Errors"), ANSI_COLOR_RESET, true, _linkUP);
 
     }
-    setPrintVal(_berInfoCmd, "Effective Physical Errors",
-                AmberField::getValueFromFields(_ppcntFields, "Effective_Errors", true), ANSI_COLOR_RESET, true,
-                _linkUP);
     setPrintVal(_berInfoCmd, "Effective Physical BER", AmberField::getValueFromFields(_ppcntFields, "Effective_BER"),
                 ANSI_COLOR_RESET, true, _linkUP);
 
