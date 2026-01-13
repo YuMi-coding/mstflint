@@ -2479,6 +2479,74 @@ std::map<std::string, std::string> MlxlinkCommander::getPptt()
     return ppttMap;
 }
 
+void MlxlinkCommander::printExtraCountersFromAmBer(MlxlinkCmdPrint& cmd)
+{
+    // Everything below here should ONLY use _ppcntFields and not call sendPrmReg,
+    // except where you explicitly want (e.g., ETH link down counters) and you guard it.
+
+    setPrintVal(cmd, "PHY Received Bits",
+                AmberField::getValueFromFields(_ppcntFields, "Phy_Received_Bits"),
+                ANSI_COLOR_RESET, true, _linkUP);
+    setPrintVal(cmd, "PHY Corrected Bits",
+                AmberField::getValueFromFields(_ppcntFields, "Phy_Corrected_Bits"),
+                ANSI_COLOR_RESET, true, _linkUP);
+
+    setPrintVal(cmd, "Symbol Errors",
+                AmberField::getValueFromFields(_ppcntFields, "Symbol_Errors"),
+                ANSI_COLOR_RESET, true, _linkUP);
+
+    setPrintVal(cmd, "Effective Physical Errors",
+                AmberField::getValueFromFields(_ppcntFields, "Effective_Errors", true),
+                ANSI_COLOR_RESET, true, _linkUP);
+
+    setPrintVal(cmd, "Effective Physical BER",
+                AmberField::getValueFromFields(_ppcntFields, "Effective_BER"),
+                ANSI_COLOR_RESET, true, _linkUP);
+
+    string phyRawErr = AmberField::getValueFromFields(_ppcntFields, "Raw_Errors_lane", false);
+    if (!phyRawErr.empty())
+    {
+        findAndReplace(phyRawErr, "_", ",");
+        phyRawErr = getValuesOfActiveLanes(phyRawErr);
+        setPrintVal(cmd, "Raw Physical Errors Per Lane", phyRawErr, ANSI_COLOR_RESET, true, _linkUP, true);
+    }
+
+    setPrintVal(cmd, "RS-FEC Corrected Symbols (Total)",
+                AmberField::getValueFromFields(_ppcntFields, "RS_FEC_Corrected_Symbols_Total"),
+                ANSI_COLOR_RESET, true, _linkUP);
+
+    setPrintVal(cmd, "RS-FEC Corrected Blocks",
+                AmberField::getValueFromFields(_ppcntFields, "RS_FEC_Corrected_Blocks"),
+                ANSI_COLOR_RESET, true, _linkUP);
+
+    setPrintVal(cmd, "RS-FEC Uncorrectable Blocks",
+                AmberField::getValueFromFields(_ppcntFields, "RS_FEC_Uncorrectable_Blocks"),
+                ANSI_COLOR_RESET, true, _linkUP);
+
+    setPrintVal(cmd, "RS-FEC No-Error Blocks",
+                AmberField::getValueFromFields(_ppcntFields, "RS_FEC_No_Error_Blocks"),
+                ANSI_COLOR_RESET, true, _linkUP);
+
+    string rsLane = AmberField::getValueFromFields(_ppcntFields, "RS_FEC_Corrected_Symbols_lane", false);
+    if (!rsLane.empty())
+    {
+        findAndReplace(rsLane, "_", ",");
+        rsLane = getValuesOfActiveLanes(rsLane);
+        setPrintVal(cmd, "RS-FEC Corrected Symbols Per Lane", rsLane, ANSI_COLOR_RESET, true, _linkUP, true);
+    }
+
+    if (_productTechnology >= PRODUCT_7NM && !dm_is_gpu((dm_dev_id_t)_devID))
+    {
+        string rawBer = AmberField::getValueFromFields(_ppcntFields, "Raw_BER_lane", false);
+        if (!rawBer.empty())
+        {
+            findAndReplace(rawBer, "_", ",");
+            rawBer = getValuesOfActiveLanes(rawBer);
+            setPrintVal(cmd, "Raw Physical BER Per Lane", rawBer, ANSI_COLOR_RESET, true, _linkUP, true);
+        }
+    }
+}
+
 void MlxlinkCommander::prepareBerInfo()
 {
     initAmBerCollector();
@@ -2492,16 +2560,9 @@ void MlxlinkCommander::prepareBerInfo()
     setPrintVal(_berInfoCmd, "Time Since Last Clear [ms]",
                 AmberField::getValueFromFields(_ppcntFields, "Time_since_last_clear_[ms]"), ANSI_COLOR_RESET, true,
                 _linkUP);
-    setPrintVal(_berInfoCmd, "PHY Received Bits",
-            AmberField::getValueFromFields(_ppcntFields, "Phy_Received_Bits"), ANSI_COLOR_RESET, true, _linkUP);
-    setPrintVal(_berInfoCmd, "PHY Corrected Bits",
-                AmberField::getValueFromFields(_ppcntFields, "Phy_Corrected_Bits"), ANSI_COLOR_RESET, true, _linkUP);
 
-    setPrintVal(_berInfoCmd, "Symbol Errors", AmberField::getValueFromFields(_ppcntFields, "Symbol_Errors"),
-                ANSI_COLOR_RESET, true, _linkUP);
-    setPrintVal(_berInfoCmd, "Effective Physical Errors",
-                AmberField::getValueFromFields(_ppcntFields, "Effective_Errors", true), ANSI_COLOR_RESET, true,
-                _linkUP);
+    printExtraCountersFromAmBer(_berInfoCmd);
+
     if (_protoActive == IB)
     {
         setPrintVal(_berInfoCmd, "Symbol BER", AmberField::getValueFromFields(_ppcntFields, "Symbol_BER"),
@@ -2510,47 +2571,6 @@ void MlxlinkCommander::prepareBerInfo()
             AmberField::getValueFromFields(_ppcntFields, "Unknown_Symbol_Errors"), ANSI_COLOR_RESET, true, _linkUP);
 
     }
-    setPrintVal(_berInfoCmd, "Effective Physical BER", AmberField::getValueFromFields(_ppcntFields, "Effective_BER"),
-                ANSI_COLOR_RESET, true, _linkUP);
-
-    string phyRawErr = AmberField::getValueFromFields(_ppcntFields, "Raw_Errors_lane", false);
-    findAndReplace(phyRawErr, "_", ",");
-    phyRawErr = getValuesOfActiveLanes(phyRawErr);
-
-    setPrintVal(_berInfoCmd, "Raw Physical Errors Per Lane", phyRawErr, ANSI_COLOR_RESET, true, _linkUP, true);
-    setPrintVal(_berInfoCmd, "RS-FEC Corrected Symbols (Total)",
-                AmberField::getValueFromFields(_ppcntFields, "RS_FEC_Corrected_Symbols_Total"), ANSI_COLOR_RESET, true,
-                _linkUP);
-
-    setPrintVal(_berInfoCmd, "RS-FEC Corrected Blocks",
-                AmberField::getValueFromFields(_ppcntFields, "RS_FEC_Corrected_Blocks"), ANSI_COLOR_RESET, true, _linkUP);
-
-    setPrintVal(_berInfoCmd, "RS-FEC Uncorrectable Blocks",
-                AmberField::getValueFromFields(_ppcntFields, "RS_FEC_Uncorrectable_Blocks"), ANSI_COLOR_RESET, true,
-                _linkUP);
-
-    setPrintVal(_berInfoCmd, "RS-FEC No-Error Blocks",
-                AmberField::getValueFromFields(_ppcntFields, "RS_FEC_No_Error_Blocks"), ANSI_COLOR_RESET, true, _linkUP);
-
-    // Optional: per-lane RS-FEC corrected symbols: Only do this if you’re sure you pushed the lane fields in getLinkStatus().
-    string rsLane = AmberField::getValueFromFields(_ppcntFields, "RS_FEC_Corrected_Symbols_lane", false);
-    if (!rsLane.empty())
-    {
-        findAndReplace(rsLane, "_", ",");
-        rsLane = getValuesOfActiveLanes(rsLane);
-        setPrintVal(_berInfoCmd, "RS-FEC Corrected Symbols Per Lane", rsLane, ANSI_COLOR_RESET, true, _linkUP, true);
-    }
-
-    // if (_protoActive == ETH)
-    // {
-    //     sendPrmReg(ACCESS_REG_PPCNT, GET, "grp=%d", PPCNT_PHY_GROUP);
-
-    //     u_int32_t linkDownCounter = getFieldValue("link_down_events");
-    //     u_int32_t linkRecoveryCounter = getFieldValue("successful_recovery_events");
-    //     setPrintVal(_berInfoCmd, "Link Down Counter", to_string(linkDownCounter), ANSI_COLOR_RESET, true, _linkUP);
-    //     setPrintVal(_berInfoCmd, "Link Error Recovery Counter", to_string(linkRecoveryCounter), ANSI_COLOR_RESET, true,
-    //                 _linkUP);
-    // }
 
     if (_protoActive == ETH)
     {
@@ -2572,15 +2592,6 @@ void MlxlinkCommander::prepareBerInfo()
             throw MlxRegException("Problem getting ETH link down and recovery issue: %s", exc.what());
         }
 
-    }
-
-    if (_productTechnology >= PRODUCT_7NM && !dm_is_gpu((dm_dev_id_t)_devID))
-    {
-        // sendPrmReg(ACCESS_REG_PPCNT, GET, "grp=%d", PPCNT_STATISTICAL_GROUP);
-        string rawBer = AmberField::getValueFromFields(_ppcntFields, "Raw_BER_lane", false);
-        findAndReplace(rawBer, "_", ",");
-        rawBer = getValuesOfActiveLanes(rawBer);
-        setPrintVal(_berInfoCmd, "Raw Physical BER Per Lane", rawBer, ANSI_COLOR_RESET, true, _linkUP, true);
     }
 }
 
@@ -2680,6 +2691,58 @@ void MlxlinkCommander::showBer()
     }
 }
 
+void MlxlinkCommander::appendOperationalCountersInTestMode(MlxlinkCmdPrint& cmd)
+{
+    // 1) PHY group counters (example fields — confirm exact field names in your ADB)
+    try
+    {
+        sendPrmReg(ACCESS_REG_PPCNT, GET, "grp=%d", PPCNT_PHY_GROUP);
+
+        // Example: if your PPCNT PHY group exposes received/corrected bits as hi/lo
+        auto rcv_bits = add32BitTo64(getFieldValue("phy_received_bits_high"),
+                                     getFieldValue("phy_received_bits_low"));
+        auto corr_bits = add32BitTo64(getFieldValue("phy_corrected_bits_high"),
+                                      getFieldValue("phy_corrected_bits_low"));
+
+        setPrintVal(cmd, "PHY Received Bits",  to_string(rcv_bits));
+        setPrintVal(cmd, "PHY Corrected Bits", to_string(corr_bits));
+
+        // Example: symbol errors if present in this group
+        auto sym_err = add32BitTo64(getFieldValue("symbol_errors_high"),
+                                    getFieldValue("symbol_errors_low"));
+        setPrintVal(cmd, "Symbol Errors", to_string(sym_err));
+    }
+    catch (...)
+    {
+        // keep silent or set a single line that PHY group is unavailable
+    }
+
+    // 2) RS-FEC group counters (group id depends on your platform)
+    try
+    {
+        sendPrmReg(ACCESS_REG_PPCNT, GET, "grp=%d", PPCNT_PHY_GROUP);
+
+        auto fec_corr_sym = add32BitTo64(getFieldValue("rs_fec_corrected_symbols_high"),
+                                         getFieldValue("rs_fec_corrected_symbols_low"));
+        setPrintVal(cmd, "RS-FEC Corrected Symbols (Total)", to_string(fec_corr_sym));
+
+        setPrintVal(cmd, "RS-FEC Corrected Blocks",
+                    to_string(add32BitTo64(getFieldValue("rs_fec_corrected_blocks_high"),
+                                           getFieldValue("rs_fec_corrected_blocks_low"))));
+
+        setPrintVal(cmd, "RS-FEC Uncorrectable Blocks",
+                    to_string(add32BitTo64(getFieldValue("rs_fec_uncorrectable_blocks_high"),
+                                           getFieldValue("rs_fec_uncorrectable_blocks_low"))));
+
+        setPrintVal(cmd, "RS-FEC No-Error Blocks",
+                    to_string(add32BitTo64(getFieldValue("rs_fec_no_error_blocks_high"),
+                                           getFieldValue("rs_fec_no_error_blocks_low"))));
+    }
+    catch (...)
+    {
+    }
+}
+
 void MlxlinkCommander::showTestModeBer()
 {
     sendPrmReg(ACCESS_REG_PPCNT, GET, "grp=%d", PPCNT_STATISTICAL_GROUP);
@@ -2701,8 +2764,18 @@ void MlxlinkCommander::showTestModeBer()
     setPrintVal(_testModeBerInfoCmd, "Time Since Last Clear [Min]", buff);
     setPrintVal(_testModeBerInfoCmd, "PRBS Errors", getStringFromVector(errors));
     setPrintVal(_testModeBerInfoCmd, "PRBS BER", getFieldStr("raw_ber_coef") + "E-" + getFieldStr("raw_ber_magnitude"));
-
+    
     cout << _testModeBerInfoCmd;
+    
+    // --- Operational snapshot block (separate print cmd) ---
+    setPrintTitle(_testModeOperationalCmd,
+                  "Operational Counters (Snapshot; may be bypassed in Test Mode)",
+                  TEST_MODE_BER_INFO_LAST /* or a new enum sized for this block */);
+
+    appendOperationalCountersInTestMode(_testModeOperationalCmd);
+
+    cout << "\n" << _testModeOperationalCmd;
+
 }
 
 void MlxlinkCommander::getPcieNdrCounters(uint32_t flitActive)

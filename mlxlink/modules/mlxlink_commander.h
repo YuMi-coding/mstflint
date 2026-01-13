@@ -445,6 +445,11 @@ public:
     string getValuesOfActiveLanes(const string& row, bool moduleLanes = false);
     bool checkIfModuleExtSupported();
 
+
+    void printExtraCountersFromAmBer(MlxlinkCmdPrint& cmd); // Fusioned printing command
+    void appendOperationalCountersInTestMode(MlxlinkCmdPrint& cmd);    // Fusioned printing command
+    void showPrbsTestModeBer();
+
     // Mlxlink query functions
     virtual void showModuleInfo();
     virtual void operatingInfoPage();
@@ -562,6 +567,7 @@ public:
     MlxlinkCmdPrint _moduleInfoCmd;
     MlxlinkCmdPrint _berInfoCmd;
     MlxlinkCmdPrint _testModeBerInfoCmd;
+    MlxlinkCmdPrint _testModeOperationalCmd;
     MlxlinkCmdPrint _mpcntPerfInfCmd;
     MlxlinkCmdPrint _mpcntTimerInfCmd;
     MlxlinkCmdPrint _eyeOpeningInfoCmd;
