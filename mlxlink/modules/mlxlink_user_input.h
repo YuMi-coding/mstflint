@@ -91,6 +91,7 @@ public:
     bool _showSltp;
     bool _showSlrp;
     bool _showCounters;
+    bool _fastCounters = false; // Fast counters-only mode
     bool _showEyeInfo;
     bool _cable;
     bool _dump;

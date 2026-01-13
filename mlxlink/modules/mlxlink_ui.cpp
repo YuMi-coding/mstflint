@@ -1110,6 +1110,10 @@ void MlxlinkUi::initCmdParser()
     AddOptions(LABEL_PORT_FLAG, LABEL_PORT_FLAG_SHORT, "LabelPort", "Label Port");
     AddOptions(PCIE_LINKS_FLAG, PCIE_LINKS_FLAG_SHORT, "", "Show valid PCIe links");
     AddOptions(BER_FLAG, BER_FLAG_SHORT, "", "Show BER Info");
+
+    // Fast counters flag
+    AddOptions(FAST_COUNTERS_FLAG, FAST_COUNTERS_FLAG_SHORT, "", "Fast counters-only mode (skip slow queries)");
+
     AddOptions(EYE_OPENING_FLAG, EYE_OPENING_FLAG_SHORT, "", "Show Eye Opening Info");
     AddOptions(MODULE_INFO_FLAG, MODULE_INFO_FLAG_SHORT, "", "Show Module Info");
     AddOptions(PPCNT_CLEAR_FLAG, PPCNT_CLEAR_FLAG_SHORT, "", "Clear PPCNT Counters");
@@ -1419,6 +1423,11 @@ ParseStatus MlxlinkUi::HandleOption(string name, string value)
     {
         addCmd(SHOW_BER);
         _userInput._showCounters = true;
+        return PARSE_OK;
+    }
+    else if (name == FAST_COUNTERS_FLAG)
+    {
+        _userInput.fastCounters = true;
         return PARSE_OK;
     }
     else if (name == PPCNT_CLEAR_FLAG)

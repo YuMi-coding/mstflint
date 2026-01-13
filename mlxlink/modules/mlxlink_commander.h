@@ -90,6 +90,10 @@
 #define MODULE_INFO_FLAG_SHORT 'm'
 #define BER_FLAG "show_counters"
 #define BER_FLAG_SHORT 'c'
+// The fast counters flag is used to show a subset of the physical counters quickly
+#define FAST_COUNTERS_FLAG "fast-counters"
+#define FAST_COUNTERS_FLAG_SHORT "fc"
+
 #define EYE_OPENING_FLAG "show_eye"
 #define EYE_OPENING_FLAG_SHORT 'e'
 #define FEC_DATA_FLAG "show_fec"
