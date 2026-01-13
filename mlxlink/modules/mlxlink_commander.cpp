@@ -2693,6 +2693,13 @@ void MlxlinkCommander::showBer()
 
 void MlxlinkCommander::appendOperationalCountersInTestMode(MlxlinkCmdPrint& cmd)
 {
+    
+    // initAmBerCollector();
+    // _amberCollector->init();
+
+    // _ppcntFields = _amberCollector->getLinkStatus();
+    // printExtraCountersFromAmBer(cmd);
+
     // 1) PHY group counters (example fields — confirm exact field names in your ADB)
     try
     {
@@ -2712,9 +2719,9 @@ void MlxlinkCommander::appendOperationalCountersInTestMode(MlxlinkCmdPrint& cmd)
                                     getFieldValue("symbol_errors_low"));
         setPrintVal(cmd, "Symbol Errors", to_string(sym_err));
     }
-    catch (...)
+    catch (const std::exception& e)
     {
-        // keep silent or set a single line that PHY group is unavailable
+        cout << "Warning: Unable to retrieve PHY group counters in Test Mode: " << e.what() << endl;
     }
 
     // 2) RS-FEC group counters (group id depends on your platform)
@@ -2722,8 +2729,8 @@ void MlxlinkCommander::appendOperationalCountersInTestMode(MlxlinkCmdPrint& cmd)
     {
         sendPrmReg(ACCESS_REG_PPCNT, GET, "grp=%d", PPCNT_PHY_GROUP);
 
-        auto fec_corr_sym = add32BitTo64(getFieldValue("rs_fec_corrected_symbols_high"),
-                                         getFieldValue("rs_fec_corrected_symbols_low"));
+        auto fec_corr_sym = add32BitTo64(getFieldValue("rs_fec_corrected_symbols_total_high"),
+                                         getFieldValue("rs_fec_corrected_symbols_total_low"));
         setPrintVal(cmd, "RS-FEC Corrected Symbols (Total)", to_string(fec_corr_sym));
 
         setPrintVal(cmd, "RS-FEC Corrected Blocks",
@@ -2735,11 +2742,12 @@ void MlxlinkCommander::appendOperationalCountersInTestMode(MlxlinkCmdPrint& cmd)
                                            getFieldValue("rs_fec_uncorrectable_blocks_low"))));
 
         setPrintVal(cmd, "RS-FEC No-Error Blocks",
-                    to_string(add32BitTo64(getFieldValue("rs_fec_no_error_blocks_high"),
-                                           getFieldValue("rs_fec_no_error_blocks_low"))));
+                    to_string(add32BitTo64(getFieldValue("rs_fec_no_errors_blocks_high"),
+                                           getFieldValue("rs_fec_no_errors_blocks_low"))));
     }
-    catch (...)
+    catch (const std::exception& e)
     {
+        cout << "Warning: Unable to retrieve RS-FEC counters in Test Mode: " << e.what() << endl;
     }
 }
 
