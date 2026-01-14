@@ -65,6 +65,14 @@ MSTFLINT Package - Firmware Burning and Diagnostics Tools
        > make -j12
        > make install
 
+       For debugging purposes, use this command to replace the ./configure:
+       > CFLAGS="-O2 -g -fno-omit-frame-pointer" \
+         CXXFLAGS="-O2 -g -fno-omit-frame-pointer" \
+         ./configure --enable-adb-generic-tools \
+            --prefix=/home/cumulus/mstflint-ser-install \
+            --disable-inband
+
+
        - Run "configure --help" for custom configuration options.
        - Typically, root privileges are required to run "make install"
 
