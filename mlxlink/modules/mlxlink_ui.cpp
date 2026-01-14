@@ -1427,7 +1427,7 @@ ParseStatus MlxlinkUi::HandleOption(string name, string value)
     }
     else if (name == FAST_COUNTERS_FLAG)
     {
-        _userInput.fastCounters = true;
+        _userInput._fastCounters = true;
         return PARSE_OK;
     }
     else if (name == PPCNT_CLEAR_FLAG)

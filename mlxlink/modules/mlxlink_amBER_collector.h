@@ -60,6 +60,9 @@ public:
     vector<AmberField> getGeneralInfo();
     virtual vector<AmberField> getSystemInfo();
     virtual vector<AmberField> getLinkStatus();
+
+    virtual vector<AmberField> getLinkStatusFast();
+
     virtual vector<AmberField> getSerdesHDR();
     virtual vector<AmberField> getSerdesNDR();
     virtual vector<AmberField> getSerdesXDR();

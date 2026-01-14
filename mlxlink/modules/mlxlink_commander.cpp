@@ -2484,7 +2484,9 @@ void MlxlinkCommander::prepareBerInfo()
     initAmBerCollector();
     _amberCollector->init();
 
-    _ppcntFields = _amberCollector->getLinkStatus();
+    _ppcntFields = _userInput._fastCounters
+             ? _amberCollector->getLinkStatusFast()
+             : _amberCollector->getLinkStatus();
 
     setPrintVal(_berInfoCmd, "Time Since Last Clear [Min]",
                 AmberField::getValueFromFields(_ppcntFields, "Time_since_last_clear_[Min]"), ANSI_COLOR_RESET, true,

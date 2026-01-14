@@ -1256,6 +1256,173 @@ vector<AmberField> MlxlinkAmBerCollector::getLinkStatus()
     return fields;
 }
 
+
+vector<AmberField> MlxlinkAmBerCollector::getLinkStatusFast()
+{
+    vector<AmberField> fields;
+    try
+    {
+        if (_isPortPCIE)
+        {
+            // Fast mode: keep PCIE behavior minimal (or mirror existing PCIE link info)
+            resetLocalParser(ACCESS_REG_MPEIN);
+            updateField("depth", _depth);
+            updateField("pcie_index", _pcieIndex);
+            updateField("node", _node);
+            sendRegister(ACCESS_REG_MPEIN, MACCESS_REG_METHOD_GET);
+            fields.push_back(AmberField("pci_link_speed_active", pcieSpeedStr(getFieldValue("link_speed_active"))));
+            fields.push_back(AmberField("pci_link_width_active", to_string(getFieldValue("link_width_active")) + "x"));
+            return fields;
+        }
+
+        auto u64_from_hi_lo = [&](const char* hi, const char* lo) -> u_int64_t {
+            return add32BitTo64(getFieldValue(hi), getFieldValue(lo));
+        };
+
+        // --------------------------------------------------------------------
+        // (1) PHY group: link down + successful recovery (needed by prepareBerInfo ETH branch)
+        // --------------------------------------------------------------------
+        resetLocalParser(ACCESS_REG_PPCNT);
+        updateField("local_port", _localPort);
+        updateField("grp", PPCNT_PHY_GROUP);
+        updateField("lp_gl", (u_int32_t)(_localPort == 255));
+        sendRegister(ACCESS_REG_PPCNT, MACCESS_REG_METHOD_GET);
+
+        fields.push_back(AmberField("Link_Down", to_string(getFieldValue("link_down_events"))));
+        fields.push_back(AmberField("successful_recovery_events", to_string(getFieldValue("successful_recovery_events"))));
+
+        // --------------------------------------------------------------------
+        // (2) STATISTICAL group: time since clear, rx/corr bits, raw errors lane, eff/sym errors
+        // and raw BER per lane (we'll pack into "Raw_BER_lane")
+        // --------------------------------------------------------------------
+        resetLocalParser(ACCESS_REG_PPCNT);
+        updateField("local_port", _localPort);
+        updateField("grp", PPCNT_STATISTICAL_GROUP);
+        updateField("lp_gl", (u_int32_t)(_localPort == 255));
+        sendRegister(ACCESS_REG_PPCNT, MACCESS_REG_METHOD_GET);
+
+        getPpcntBer(NETWORK_PORT_TYPE, fields);
+        // Time since clear
+        {
+            u_int64_t lastClearMS = u64_from_hi_lo("time_since_last_clear_high", "time_since_last_clear_low");
+            float lastClearMin = (float)lastClearMS / 60000.0f;
+            char timeFrmt[64];
+            sprintf(timeFrmt, "%.1f", lastClearMin);
+            fields.push_back(AmberField("Time_since_last_clear_[Min]", string(timeFrmt)));
+            fields.push_back(AmberField("Time_since_last_clear_[ms]", to_string(lastClearMS)));
+        }
+
+        // RX / Corrected bits
+        {
+            u_int64_t rx_bits   = u64_from_hi_lo("phy_received_bits_high",  "phy_received_bits_low");
+            u_int64_t corr_bits = u64_from_hi_lo("phy_corrected_bits_high", "phy_corrected_bits_low");
+            fields.push_back(AmberField("Phy_Received_Bits",  to_string(rx_bits)));
+            fields.push_back(AmberField("Phy_Corrected_Bits", to_string(corr_bits)));
+        }
+
+        // Effective errors + symbol errors
+        {
+            u_int64_t effErrors = u64_from_hi_lo("phy_effective_errors_high", "phy_effective_errors_low");
+            u_int64_t symErrors = u64_from_hi_lo("phy_symbol_errors_high",    "phy_symbol_errors_low");
+            fields.push_back(AmberField("Effective_Errors", to_string(effErrors)));
+            fields.push_back(AmberField("Symbol_Errors",    to_string(symErrors)));
+        }
+
+        // Raw errors per lane packed: "Raw_Errors_lane" (underscore-separated)
+        {
+            string packed;
+            for (u_int32_t lane = 0; lane < _numOfLanes; lane++)
+            {
+                u_int64_t rawErr = u64_from_hi_lo(
+                    ("phy_raw_errors_lane" + to_string(lane) + "_high").c_str(),
+                    ("phy_raw_errors_lane" + to_string(lane) + "_low").c_str());
+                packed += to_string(rawErr);
+                if (lane + 1 != _numOfLanes) packed += "_";
+            }
+            fields.push_back(AmberField("Raw_Errors_lane", packed));
+        }
+
+        // Raw BER per lane packed: "Raw_BER_lane" (underscore-separated)
+        // NOTE: this matches prepareBerInfo() which looks for key "Raw_BER_lane"
+        if (_productTechnology >= PRODUCT_7NM && !dm_is_gpu((dm_dev_id_t)_devID))
+        {
+            string packed;
+            for (u_int32_t lane = 0; lane < _numOfLanes; lane++)
+            {
+                string v = getFieldStr("raw_ber_coef_lane" + to_string(lane)) + "E-" +
+                           getFieldStr("raw_ber_magnitude_lane" + to_string(lane));
+                packed += v;
+                if (lane + 1 != _numOfLanes) packed += "_";
+            }
+            fields.push_back(AmberField("Raw_BER_lane", packed));
+        }
+
+        // Effective_BER: keep the same key prepareBerInfo uses
+        // This assumes getPpcntBer() normally populates "Effective_BER" via coef/magnitude fields.
+        // If STATISTICAL_GROUP already has effective_ber_coef/magnitude, use them.
+        // If not, you need to call the same helper getPpcntBer() uses (see note below).
+        {
+            // Try common pattern first; adjust names if your parser uses different ones.
+            // If these field names don't exist, you'll see "N/A" / exception and should switch to calling getPpcntBer().
+            string effBer = getFieldStr("effective_ber_coef") + "E-" + getFieldStr("effective_ber_magnitude");
+            fields.push_back(AmberField("Effective_BER", effBer));
+        }
+
+        // --------------------------------------------------------------------
+        // (3) RS-FEC counters group: you already rely on rs_fec_* field names being present.
+        // In your original code you *did not* switch grp before reading rs_fec_*.
+        // That implies either:
+        //   - those fields are present in the current PPCNT_STATISTICAL_GROUP view, OR
+        //   - you intended to switch grp=0x12 but didn't.
+        //
+        // Fast mode should be explicit: do the grp switch to the RS-FEC group you want.
+        // --------------------------------------------------------------------
+        resetLocalParser(ACCESS_REG_PPCNT);
+        updateField("local_port", _localPort);
+        updateField("grp", 0x12); // <-- if your RS-FEC counters are in grp=0x12 (as your comment says)
+        updateField("lp_gl", (u_int32_t)(_localPort == 255));
+        sendRegister(ACCESS_REG_PPCNT, MACCESS_REG_METHOD_GET);
+
+
+        {
+            u_int64_t rs_corr_blocks   = u64_from_hi_lo("rs_fec_corrected_blocks_high", "rs_fec_corrected_blocks_low");
+            u_int64_t rs_uncorr_blocks = u64_from_hi_lo("rs_fec_uncorrectable_blocks_high", "rs_fec_uncorrectable_blocks_low");
+            u_int64_t rs_noerr_blocks  = u64_from_hi_lo("rs_fec_no_errors_blocks_high", "rs_fec_no_errors_blocks_low");
+            u_int64_t rs_corr_sym_total =
+                u64_from_hi_lo("rs_fec_corrected_symbols_total_high", "rs_fec_corrected_symbols_total_low");
+
+            fields.push_back(AmberField("RS_FEC_Corrected_Blocks",         to_string(rs_corr_blocks)));
+            fields.push_back(AmberField("RS_FEC_Uncorrectable_Blocks",    to_string(rs_uncorr_blocks)));
+            fields.push_back(AmberField("RS_FEC_No_Error_Blocks",         to_string(rs_noerr_blocks)));
+            fields.push_back(AmberField("RS_FEC_Corrected_Symbols_Total", to_string(rs_corr_sym_total)));
+
+            string packed;
+            for (u_int32_t lane = 0; lane < _numOfLanes; lane++)
+            {
+                u_int64_t x = u64_from_hi_lo(
+                    ("rs_fec_corrected_symbols_lane" + to_string(lane) + "_high").c_str(),
+                    ("rs_fec_corrected_symbols_lane" + to_string(lane) + "_low").c_str());
+                packed += to_string(x);
+                if (lane + 1 != _numOfLanes) packed += "_";
+            }
+            fields.push_back(AmberField("RS_FEC_Corrected_Symbols_lane", packed));
+        }
+
+        // Optional IB-only unknown symbol errors
+        if (_isPortIB)
+        {
+            u_int64_t unknown_symbol = u64_from_hi_lo("symbol_errors_high", "symbol_errors_low");
+            fields.push_back(AmberField("Unknown_Symbol_Errors", to_string(unknown_symbol)));
+        }
+    }
+    catch (const std::exception& exc)
+    {
+        throw MlxRegException("Failed to get Link Status FAST information: %s", exc.what());
+    }
+
+    return fields;
+}
+
 void MlxlinkAmBerCollector::fillParamsToFields(const string& title,
                                                const vector<string>& values,
                                                vector<AmberField>& fields)
